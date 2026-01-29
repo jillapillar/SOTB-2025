@@ -1,0 +1,792 @@
+---
+title: "SOTB-Indicator-Matrix"
+author: "Jan Walker"
+date: "2025-07-09"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+#Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Packages}
+
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(stringr)
+library(clipr)
+library(lubridate)
+library(reshape2)
+library(vegan)
+library(ggplot2)
+library(ggrepel)
+
+library(ggpubr)
+library(openxlsx)
+
+library(viridis)
+library(RColorBrewer)
+library(pals)
+
+```
+
+# Habitat Extent
+
+# Trophic Food Web Support
+
+```{r Matrix}
+
+#2 metrics
+
+# Fish species richness
+
+str(Fish_SR_site_metric)
+
+# Invert species richness 
+
+str(Benthic_invert_SR_site_metric)
+
+#not developed yet
+
+Trophic_support <- Fish_SR_site_metric %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = species_richness, quartile_pct, metric) %>% 
+    #benthic invert richness
+  rbind(., Benthic_invert_SR_site_metric %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = richness, quartile_pct, metric)) %>% 
+  mutate(indicator = "Trophic Support")
+
+
+Trophic_support_matrix_plot <- Trophic_support %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  ungroup() %>% 
+  complete(siteid_star, indicator, metric, season,
+           fill = list(quartile_pct = NA, raw_value = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Trophic_support_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Trophic_matrix_plot.jpg", 
+           Trophic_support_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+  
+
+```
+
+
+# Nursery Habitat 
+
+```{r Matrix}
+
+#7 metrics
+
+# Fish species richness
+
+str(Fish_SR_site_metric)
+
+# Fish size range
+
+str(Fish_size_site_metric)
+
+#Presence of tidewater goby
+
+str(Goby_presence)
+
+#Presence of SAV
+
+str(SAV_presence_metric)
+
+# invert species richness 
+
+str(Benthic_invert_SR_site_metric)
+
+# Temp
+#not developed yet
+
+#DO
+#not developed yet
+
+Nursery_habitat <- Fish_SR_site_metric %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = species_richness, quartile_pct, metric) %>% 
+  #size range
+  rbind(., Fish_size_site_metric %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = fish_range, quartile_pct, metric)) %>% 
+  #goby
+  rbind(., Goby_presence %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = tidewater_goby, quartile_pct = score, metric)) %>% 
+  #SAV
+  rbind(., SAV_presence_metric %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = score, quartile_pct = score, metric)) %>% 
+  #benthic invert richness
+  rbind(., Benthic_invert_SR_site_metric %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = richness, quartile_pct, metric)) %>% 
+  #once WQ are run, we will join the files together
+  #this is just a placeholder for now
+  rbind(., Site_df %>% 
+          select(siteid, siteid_star, estuaryname, year, season) %>% 
+          mutate(raw_value = NA,
+                 quartile_pct = NA,
+                 metric = "Perc of time temp > 25C")) %>% 
+  #this is just a placeholder for now
+  rbind(., Site_df %>% 
+          select(siteid, siteid_star, estuaryname, year, season) %>% 
+          mutate(raw_value = NA,
+                 quartile_pct = NA,
+                 metric = "Perc of time DO < 5mg/L")) %>%  
+  mutate(indicator = "Nursery Habitat")
+
+
+Nursery_Habitat_matrix_plot <- Nursery_habitat %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  ungroup() %>% 
+  #intentionally add NAs
+  complete(siteid_star, indicator, metric, season,
+           fill = list(quartile_pct = NA, raw_value = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 1)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  facet_grid(. ~ season, space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Nursery_Habitat_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Nursery_matrix_plot.jpg", 
+           Nursery_Habitat_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+```
+
+
+# Forage and Breeding Function of Birds
+
+```{r Matrix}
+
+# 2 metrics
+
+# Bird species richness
+
+str(Bird_SR_site_metric)
+
+#activity surveys
+#not developed
+
+
+Bird_forage <- Bird_SR_site_metric %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = species_richness, quartile_pct, metric) %>% 
+  #once activty is run, we will join the files together
+  #this is just a placeholder for now
+  rbind(., Site_df %>% 
+          select(siteid, siteid_star, estuaryname, year, season) %>% 
+          mutate(raw_value = NA,
+                 quartile_pct = NA,
+                 metric = "bird activity")) %>% 
+  mutate(indicator = "Forage and Breeding Function for Birds")
+
+
+Bird_forage_matrix_plot <- Bird_forage %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Bird_forage_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Bird_matrix_plot.jpg", 
+           Bird_forage_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+
+```
+
+
+# Habitat structure and complexity
+
+```{r Matrix}
+
+#1 metric
+
+#CRAM
+
+str(CRAM_index_metric)
+
+Habitat_structure <- CRAM_index_metric %>% 
+  filter(index == "index_avg") %>% 
+  ungroup() %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year = vyear,
+         raw_value = value, quartile_pct, metric) %>% 
+  mutate(indicator = "Habitat structure and complexity") %>% 
+  #need to this to join later
+  mutate(season = NA)
+
+
+Habitat_structure_matrix_plot <- Habitat_structure %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+ # facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Habitat_structure_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Habitat_Structure_matrix_plot.jpg", 
+           Habitat_structure_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+
+```
+
+
+# Vegetation community
+
+```{r Matrix}
+
+#2 metrics
+
+#% native
+
+str(Veg_native_metric)
+
+#richness
+
+str(Veg_SR_site_metric)
+
+Veg_community <- Veg_SR_site_metric %>% 
+  # species richness
+  select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = species_richness, quartile_pct, metric) %>% 
+  #% native
+  rbind(., Veg_native_metric %>% 
+          select(siteid, siteid_star, estuaryname, year, season,
+         raw_value = proportion, quartile_pct, metric)) %>% 
+  mutate(indicator = "Vegetation Community")
+
+
+Veg_community_matrix_plot <- Veg_community %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Veg_community_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Veg_community_matrix_plot.jpg", 
+           Veg_community_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+
+```
+
+
+# Eutrophication
+
+```{r Matrix}
+
+#4 metrics
+
+#DO
+#not developed
+
+#macro cover
+str(Macro_Floating_metric)
+
+#TN
+
+str(Avg_TN_metric)
+
+#TOC
+
+str(Avg_TOC_metric)
+
+Eutrophication <- Macro_Floating_metric %>% 
+  #non-algae cover
+  select(siteid, estuaryname, year, season,
+         raw_value = nonalgae_avg, quartile_pct, metric) %>% 
+  #TN
+  rbind(., Avg_TN_metric %>% 
+          select(siteid, estuaryname, year, season,
+         raw_value = TN_avg, quartile_pct, metric)) %>% 
+  #TOC
+  rbind(., Avg_TOC_metric %>% 
+          select(siteid, estuaryname, year, season,
+         raw_value = TOC_avg, quartile_pct, metric)) %>% 
+  #once WQ are run, we will join the files together
+  #this is just a placeholder for now
+  rbind(., Site_df %>% 
+          select(siteid, estuaryname, year, season) %>% 
+          mutate(raw_value = NA,
+                 quartile_pct = NA,
+                 metric = "Perc of time DO < 5mg/L")) %>%  
+  mutate(indicator = "Eutrophication") %>% 
+  #add siteidstar
+  left_join(., Site_df %>% 
+              select(siteid, siteid_star) %>% 
+              unique())
+
+
+Eutrophication_matrix_plot <- Eutrophication %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Eutrophication_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Eutrophication_matrix_plot.jpg", 
+           Eutrophication_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+
+
+```
+
+
+# Anthropogenic Disturbance
+
+```{r Matrix}
+
+#3 metrics
+
+#Trash
+
+str(Trash_total_metric)
+
+#Plastic
+
+str(Trash_plastic_metric)
+
+#CRAM buffer
+
+str(CRAM_index_metric)
+
+
+Anthro_disturbance <- CRAM_index_metric %>% 
+  filter(index == "buffer_avg") %>% 
+  ungroup() %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year = vyear,
+         raw_value = value, quartile_pct, metric) %>% 
+  #need to this to join later
+  mutate(season = NA) %>% 
+  #total trash
+  rbind(., Trash_total_metric %>% 
+          select(siteid, siteid_star, estuaryname, season,
+         raw_value = total_trash_avg, quartile_pct, metric) %>% 
+          mutate(year = 2024)) %>% 
+  #plastic
+  rbind(., Trash_plastic_metric %>% 
+          select(siteid, siteid_star, estuaryname, season,
+         raw_value = total_category_avg, quartile_pct, metric) %>% 
+          mutate(year = 2024)) %>% 
+  mutate(indicator = "Anthropogenic Disturbance")
+
+
+Anthro_disturbance_matrix_plot <- Anthro_disturbance %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+  #facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Anthro_disturbance_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Anthro_disturb_matrix_plot.jpg", 
+           Anthro_disturbance_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+  
+
+
+```
+
+
+# Altered hydrology
+
+```{r Matrix}
+
+#1 metric
+
+#CRAM hydrology 
+
+str(CRAM_index_metric)
+
+Hydrology <- CRAM_index_metric %>% 
+  filter(index == "hydrology_avg") %>% 
+  ungroup() %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year = vyear,
+         raw_value = value, quartile_pct, metric) %>% 
+  mutate(indicator = "Altered Hydrology") %>% 
+  #need to this to join later
+  mutate(season = NA)
+
+
+Hydrology_matrix_plot <- Hydrology %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+ # facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Hydrology_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Hydrology_matrix_plot.jpg", 
+           Hydrology_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+```
+
+
+# Physical structure
+
+```{r Matrix}
+
+#1 metric
+
+#CRAM physical structure 
+
+str(CRAM_index_metric)
+
+Physical_structure <- CRAM_index_metric %>% 
+  filter(index == "physical_structure_avg") %>% 
+  ungroup() %>% 
+  #fish species richness
+  select(siteid, siteid_star, estuaryname, year = vyear,
+         raw_value = value, quartile_pct, metric) %>% 
+  mutate(indicator = "Physical Structure") %>% 
+  #need to this to join later
+  mutate(season = NA)
+
+
+Physical_structure_matrix_plot <- Physical_structure %>% 
+  mutate(siteid_star = factor(siteid_star, levels = rev(site_order_star))) %>%
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  mutate(quartile_pct = factor(quartile_pct, levels = c(0, 1, 2, 3, 4))) %>%
+  #intentionally add NAs
+  group_by(indicator, season) %>%
+  complete(siteid_star, metric, fill = list(quartile_pct = NA)) %>%
+  ggplot(aes(x=metric, y=siteid_star, fill=quartile_pct)) +
+  geom_tile(color = "black") +
+  #add average values into boxes
+  geom_text(aes(label = round(raw_value, 2)), size = 5) +
+scale_fill_manual(name = "Quartile",
+  values = c(
+    "0" = "white",
+    "1" = "#eff3ff",
+    "2" = "#bdd7e7",
+    "3" = "#6baed6",
+    "4" = "#2171b5",
+    "NA" = "gray80"
+  ),
+  na.value = "gray80"
+) +
+  theme_bw() +
+  ylab("Site") +
+  xlab("Metric") +
+ # facet_grid(. ~ season, scales = "free", space = "free") +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    hjust = 1, vjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text = element_text(colour="black", size = 13, face = "bold"))
+
+Physical_structure_matrix_plot
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Matrix_Indicators/Physical_structure_matrix_plot.jpg", 
+           Physical_structure_matrix_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+```
+
+
+# Estuary mouth dynamics
+
+# SLR amelioration
+
+

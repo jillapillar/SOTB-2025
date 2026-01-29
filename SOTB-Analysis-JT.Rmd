@@ -1,0 +1,1049 @@
+---
+title: "SOTB-Analysis-JT"
+output: html_document
+date: "2026-01-26"
+---
+
+This is the final analysis document for the 2025 SOTB report - Appendix D - Monitoring Results.
+
+Each Indicator will have its own section for metrics, algorithms (not included in final report) and figures.
+
+Metrics downloaded from (1) EMPA data portal, (2) CRAM data portal, (3) from CW
+
+List of indicators (each has its own algorithm described in Appendix A):
+
+CONDITION INDICATORS
+- Trophic Food Web Support
+- Nursery Habitat Provisioning for Fish
+- Forage and Breeding Function for Birds
+- Habitat Structure and Complexity
+- Vegetation Community
+- Sea-level rise Amelioration
+
+STRESSOR INDICATORS
+- Eutrophication
+-Anthropogenic Disturbance and Land Use
+-Altered Hydrology
+-Non-native Species
+-Contaminant & Excessive Sediment Loading
+
+
+We will include the following data:
+
+Year - 2024
+  If data is available from 2023, we will include it the clean datasets for later filtering
+Season - Spring and Fall
+Sites - 
+  Malibu Lagoon
+  Topanga Canyon
+  Zuma Lagoon
+  Arroyo Sequit
+  Big Sycamore 
+
+
+#Setup
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Open Libs
+```{r Packages}
+
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+library(readr)
+library(stringr)
+library(clipr)
+library(lubridate)
+library(reshape2)
+library(vegan)
+library(ggplot2)
+library(ggrepel)
+library(here)
+library(ggpubr)
+library(openxlsx)
+
+library(viridis)
+library(RColorBrewer)
+library(pals)
+
+```
+# Step 1: Load all datasets and clean data
+
+```{r source loading script, cache = T}
+source(here("SM-Bay-scripts", "01_load_data.R"))
+source(here("SM-Bay-scripts", "02_clean_data.R"))
+```
+
+
+# Step 3: Monitoring data figures
+
+ Fish Metrics
+ 
+```{r fish monitoring data - species richness, heatmap, nmds, echo = F}
+
+#site housekeeping
+## add order of sites (north to south)
+site_order <- c("SC-BSC", "SC-ASE", "SC-ZUM","SC-TOP", "SC-MAL")
+
+## define colors for color category
+colors <- c("Spring" = "#DDCC77", "Fall" = "#88CCEE", "Both" = "#117733",
+            "None" = "white")
+#heatmap
+
+fish_heatmap <- fish_filtered_data %>% 
+  ggplot(aes(commonname, siteid, fill = color_category))+
+  geom_tile(colour = "gray50") + # tile border
+  scale_fill_manual(values = colors, name = "Season") +
+  coord_equal(expand = 0) +
+  scale_y_discrete(limits = rev(levels(fish_filtered_data$siteid)), drop = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(size = 10, angle = 45, hjust = 1, face = "bold"), # bold common names
+        axis.text.y = element_text(size = 12),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12) 
+        
+  )+
+  labs(x = "Fish Species", y = "SiteID", title = "2024 Fish Presence")+
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))+
+  #this adds make in the sites with missing data
+  geom_hline(yintercept = seq(0.5, length(unique(PA_filter_order$siteid)) - 0.5, by = 1), #add normal grid lines
+             color = "black", linewidth = 0.5) +
+  geom_vline(xintercept = seq(0.5, n_species - 0.5, by = 1),
+             color = "black", linewidth = 0.5)
+
+## print it
+fish_heatmap
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/fish_heatmap.jpg",
+           fish_heatmap,
+       width = 12,
+       height = 8,
+           dpi = 300)
+
+
+#nMDS
+str(PA_filter)
+
+Fish_PA_data_wide <- PA_filter %>% 
+  #select variables for comparison
+  select(siteid, estuaryname, date, stationno, surveytype, netreplicate, region,
+         estuaryclass, mpastatus, estuarytype, year, season,
+         commonname, presence_absence) %>%
+  #get rid of sites with Not recorded fish, therefore getting rid of the sites with no fish
+  filter(commonname != "Not recorded") %>% 
+  #Switch to wide format
+  pivot_wider(names_from = commonname, values_from = presence_absence, values_fill = 0 ) %>%
+  unite("SiteID_full", siteid, stationno, netreplicate, date,
+        sep = "-",
+        remove = FALSE ) #%>% 
+  #filter(SiteID_full != "SC-VEN-3-2-2023-11-03")
+
+Fish_meta_df <- Fish_PA_data_wide %>% 
+  select(siteid, estuaryname, date, stationno, surveytype, netreplicate, region,
+         estuaryclass, mpastatus, estuarytype, year, season) 
+
+Fish_matrix <- Fish_PA_data_wide %>% 
+  select(-c(siteid, estuaryname, date, stationno, surveytype, netreplicate, region,
+         estuaryclass, mpastatus, estuarytype, year, season)) %>% 
+  column_to_rownames("SiteID_full")
+
+#Permanvoa
+
+Fish_perm <- adonis2(Fish_matrix ~ season,
+                data = Fish_meta_df)
+Fish_perm
+
+
+#nmds
+
+nmds.Fish <- metaMDS(Fish_matrix, distance = "bray", autotransform = TRUE)
+#autotransform = TRUE for transformation, otherwise keep FALSE
+nmds.Fish #stress = 0.112 1/27/26
+
+plot(nmds.Fish)
+
+#look for outliers
+orditorp(nmds.Fish, "sites") 
+#identify the outliers in order to drop from analysis = SC-BAT-1-3
+
+# Stress Plot
+stressplot(nmds.Fish, main = "Shepard plot")
+
+# Extract scores
+
+# Extract site scores (samples)
+site.scores <- as.data.frame(scores(nmds.Fish, display = "sites"))
+site.scores$SampleID <- rownames(site.scores)  # optional for labeling
+
+# Extract species scores (species vectors)
+species.scores <- as.data.frame(scores(nmds.Fish, display = "species"))
+species.scores$Species <- rownames(species.scores)
+
+# Add metadata to sites
+site.scores <- cbind(site.scores, Fish_meta_df)
+
+####extract signficant species
+#this can be repeated for enironmental vectors
+#replicae "vectors" with "factors"
+
+# Fit species to the NMDS ordination
+fish_envfit <- envfit(nmds.Fish, Fish_matrix, permutations = 999)
+
+# Extract p-values
+species_pvals <- as.data.frame(fish_envfit$vectors$pvals)
+species_scores <- as.data.frame(scores(fish_envfit, display = "vectors"))
+species_r <- as.data.frame(fish_envfit$vectors$r)
+
+# Combine
+species_scores$Species <- rownames(species_scores)
+species_scores$pval <- species_pvals[, 1]
+species_scores$r <- species_r[, 1]
+
+# Keep only p < 0.01
+species_sig <- species_scores %>%
+  filter(pval < 0.01)
+
+#Rescale NMDS vectors by r
+species_sig <- species_sig %>%
+  mutate(NMDS1_scaled = NMDS1 * r * 3,
+         NMDS2_scaled = NMDS2 * r * 3)
+
+
+# PLot contains all sites - not a big deal
+
+nMDS.plot.fish <- site.scores %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  ggplot() +
+  # Sample points
+  geom_point(data = site.scores, aes(x = NMDS1, y = NMDS2, 
+                                     color = season,
+                                     shape = siteid), 
+             size = 3) +
+  
+  #Confidence ellipses
+  stat_ellipse(data = site.scores,
+               aes(x = NMDS1, y = NMDS2, color = season),
+               type = "t", level = 0.95, linetype = "dashed", linewidth = 1) +
+  #type = "t" uses a multivariate t-distribution (better for small sample sizes).
+  #level = 0.95 is for 95% confidence ellipses.
+  #You can switch to type = "norm" if assumptions for t-distribution don’t hold.
+
+  # Arrows scaled by r
+  geom_segment(data = species_sig %>%
+                 arrange(desc(r)) %>%   # Sort descending by r
+                 slice_head(n = 5),      # Take top 5 rows,
+               aes(x = 0, y = 0, xend = NMDS1_scaled, yend = NMDS2_scaled),
+               arrow = arrow(length = unit(0.25, "cm")),
+               color = "black", linewidth = 1) +
+
+  #Species labels at arrow tips
+  geom_text_repel(
+    data = species_sig %>%
+                 arrange(desc(r)) %>%   # Sort descending by r
+                 slice_head(n = 5),
+    aes(x = NMDS1_scaled, y = NMDS2_scaled, label = Species),
+    size = 4, fontface = "bold", color = "black",
+    nudge_y = 0.05, # small nudge to prevent overlap with arrow tip
+    segment.size = 0.5,
+    segment.color = "grey50"
+  ) +
+  
+  #aesthetics 
+  theme_bw() + 
+  labs(title = "NMDS with Significant Species Vectors (Scaled by r)",
+       x = "NMDS1", y = "NMDS2") +
+  theme(legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10)) +
+  coord_fixed() +  ## need aspect ratio of 1
+  
+  #add stress label
+  annotate(geom = "label", x = 5, y = -1, size = 3,
+           label = paste("Stress: ", round(nmds.Fish$stress, digits = 3))) +
+  
+  #add specifications for colors and shapes
+  scale_shape_manual(name = "Site",
+                     values=c(15, 16, 17, 18, 3, 4, 8)) +
+  scale_color_manual(name = "Season",
+                       values = c("#DDCC77", "#88CCEE"),
+                     breaks = c("Spring", "Fall"))
+
+nMDS.plot.fish
+
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Fish_nMDS_species.jpg", 
+           nMDS.plot.fish,
+       width = 10,
+       height = 6,
+           dpi = 300)
+
+# First Calculate the total number of nets for each site
+# Summarize the number of unique combinations of netreplicate and stationno for each site
+netreplicate_data <- PA_filter %>% #we will use PA_filter because this includes all nets
+  group_by(siteid, season) %>%
+  summarize(total_replicates = n_distinct(paste(netreplicate, stationno)), .groups = 'drop')
+
+#Calculate SR by site
+Fish_PA_data_wide_SR_site <- Fish_PA_data_wide %>% 
+  group_by(siteid, estuaryname, region,
+         estuaryclass, mpastatus, estuarytype, year, season) %>% 
+  summarise(across('California halibut':'Western mosquitofish', sum)) %>% 
+  ungroup() %>% 
+  #change numeric values to 1 so that it's PA
+  mutate(across(c('California halibut':'Western mosquitofish'), ~ if_else(. > 0, 1, 0))) %>% 
+  #calculate SR
+  mutate(species_richness = select(.,
+                                  'California halibut':'Western mosquitofish') %>% 
+      rowSums()) %>% 
+  #add in missing istes
+  left_join(Site_df, .) %>% 
+  #add in 0 for species richness
+  mutate(species_richness = ifelse(is.na(species_richness), 0, species_richness)) %>% 
+  left_join(., netreplicate_data) %>% 
+  #Arroyo Sequit Fall was not fished, so need to change the 0 back to NA
+  mutate(species_richness = case_when(
+    siteid == "SC-ASE" & season == "Fall" ~ NA,
+    TRUE ~ species_richness
+  ))
+
+
+SR_site_plot <- Fish_PA_data_wide_SR_site %>% 
+  mutate(siteid = factor(siteid, levels = site_order)) %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  ggplot(aes(x=siteid, y=species_richness, fill = season)) + 
+  geom_bar(stat = "identity", color = "black",
+           position = position_dodge()) +
+  ylab("Fish species richness") + 
+  xlab("Site") +
+  theme_bw() +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    vjust = 1, hjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  scale_fill_manual(name = "Season",
+                    values = c("#DDCC77", "#88CCEE"),
+                    breaks = c("Spring", "Fall")) + 
+  theme(legend.position = "bottom") +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text.x = element_text(size=14, face = "bold")) +
+  geom_text(aes(label = total_replicates), 
+            position = position_dodge(width = 0.9),
+            vjust = -0.5, size = 3.5)   # Show total replicates as label
+
+SR_site_plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Fish_SpeciesRichness_bysite.jpg", 
+           SR_site_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+```
+ 
+ Fish Length Metrics
+
+```{r fish length monitoring data, include = F, echo = F}
+str(Length_Data_clean)
+
+#calculate the range of fish sizes
+
+Fish_size_range <- Length_Data_clean %>% 
+  mutate(star = if_else(estuarytype == "Temporarily Closed", "*", "")) %>% 
+  #select only fish
+  filter(fish_or_invert == "fish") %>% 
+  filter(year == "2024") %>% 
+  group_by(siteid, season,
+           estuaryname, estuarytype, year) %>% 
+  summarise(fish_range = max(length_mm) - min(length_mm))
+
+#lets plot a full boxplot of all the lengths 
+
+Fish_size_boxplot <- Length_Data_clean %>% 
+  mutate(star = if_else(estuarytype == "Temporarily Closed", "*", "")) %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  ggplot(aes(x = siteid, y = length_mm, fill = season)) +
+  geom_boxplot(outlier.shape = NA, 
+               position = position_dodge(width = 0.8), width = 0.6) +
+  geom_jitter(aes(color = season, group = season),
+              position = position_jitterdodge(jitter.width = 0.2, dodge.width = 0.8),
+              size = 2, alpha = 0.7) +
+  scale_fill_manual(values = c("Spring" = "#DDCC77", "Fall" = "#88CCEE")) +
+  scale_color_manual(values = c("Spring" = "#DDCC77", "Fall" = "#88CCEE")) +
+  labs(x = "Site", y = "Fish length (mm)") +
+  scale_x_discrete(limits = (levels(fish_filtered_data$siteid_star)), drop = FALSE) +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    legend.position = "bottom"
+  ) +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) 
+
+Fish_size_boxplot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Fish_SizeRange_bysite.jpg", 
+           Fish_size_boxplot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+```
+#Invertebrate Metrics
+
+```{r invert monitoring data, include = F, echo = F}
+str(PA_all)
+
+# invert species heatmap
+
+n_species_invert <- length(unique(PA_filter_order_invert$scientificname))
+
+heatmap_large_invert <- PA_filter_order_invert %>% 
+  ggplot(aes(scientificname, siteid, fill = color_category))+
+  geom_tile(colour = "gray50") + # tile border
+  scale_fill_manual(values = colors, name = "Season") +
+  coord_equal(expand = 0) +
+  #scale_y_discrete(limits = rev(levels(fish_filtered_data$siteid_star)), drop = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(size = 10, angle = 45, hjust = 1, face = "bold"), # bold common names
+        axis.text.y = element_text(size = 12),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12) 
+        
+  )+
+  labs(x = "Macro-invertebrate species", y = "SiteID", title = "2024 Macro-Invertebrate Presence")+
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))+
+  #this adds make in the sites with missing data
+  geom_hline(yintercept = seq(0.5, length(unique(PA_filter_order_invert$siteid)) - 0.5, by = 1), #add normal grid lines
+             color = "black", linewidth = 0.5) +
+  geom_vline(xintercept = seq(0.5, n_species_invert - 0.5, by = 1),
+             color = "black", linewidth = 0.5)
+
+## print it
+heatmap_large_invert
+
+ggsave("/Users/janw/Desktop/projects/Prop50-SMB/Figures/Inverts/Macro_Invert_PA_heatmap.jpg", 
+           heatmap_large_invert,
+       width = 12,
+       height = 8,
+           dpi = 150)
+
+```
+
+Temperature and Dissolved Oxygen Metrics
+
+```{r temperature and DO, echo = F}
+do_plot <- ggplot(temp_do) +
+  geom_bar(aes(x = siteid, y = num_events_DO), stat = "identity", fill = "darkred") +
+  ylab("number of annual DO events < 3 mg/L") +
+  xlab("estuary") +
+  theme_bw() +
+  facet_wrap(~season) +
+  theme(axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size =24),
+        axis.text.x = element_text(size = 18, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 18, angle = 45, hjust = 1),
+        strip.text = element_text(size = 20)) 
+  
+ 
+do_plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/DO_plot.jpg",
+       do_plot, 
+       height = 12,
+       width = 12,
+       dpi = 300)
+
+temp_plot <- ggplot(temp_do) +
+  geom_bar(aes(x = siteid, y = perc_temp_abv_25), stat = "identity", fill = "red") +
+  ylab("average percent time above 25C") +
+  xlab("estuary") +
+  theme_bw() +
+  ylim(c(0,100)) +
+  facet_wrap(~season) +
+   theme(axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size =18),
+        axis.text.x = element_text(size = 16, angle = 45, hjust = 1),
+        axis.text.y = element_text(size = 16, angle = 45, hjust = 1),
+        strip.text = element_text(size = 18)) 
+  
+temp_plot
+
+combined_stressor <- cowplot::plot_grid(do_plot, temp_plot, labels = c("A", "B"), label_size = 16, ncol = 1)
+combined_stressor
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/temp_do_plot.jpg",
+       combined_stressor, 
+       height = 12,
+       width = 12,
+       dpi = 300)
+```
+#Bird Metrics
+
+```{r birds, echo = F}
+str(bird_count_df)
+
+PA_birds <- bird_count_df %>%
+  mutate(presence_absence = ifelse(abundance != 0, 1, 0)) %>% 
+  #malibu was sampled twice in spring 2024 - select commmon month
+  filter(month != 5)
+
+
+## find order of PA from most to least for ordering of heat map
+SpeciesOrder_bird <- PA_birds %>%
+  filter(presence_absence == 1) %>% 
+  select(commonname, siteid) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  summarise(Count = n()) %>% 
+  arrange(desc(Count))
+
+## get the ordered list of species by their count
+SpeciesList_bird <- SpeciesOrder_bird %>% pull(commonname)
+
+## summarize df and create color category for PA heat map. will add new color if present in both years 
+PA_summarized_bird <- PA_birds %>%
+  group_by(siteid, commonname) %>%
+  summarise(color_category = case_when(
+    sum(presence_absence == 1 & season == "Fall") > 0 & 
+      sum(presence_absence == 1 & season == "Spring") > 0 ~ "Both",
+    sum(presence_absence == 1 & season == "Spring") > 0 ~ "Spring",
+    sum(presence_absence == 1 & season == "Fall") > 0 ~ "Fall",
+    TRUE ~ "None"
+  )) %>%
+  ungroup() #
+
+setdiff(unique(PA_summarized$commonname), SpeciesList) 
+#more species are showing up then in the list because they are 0's
+#we should filter them out
+
+## order based on site order
+PA_filter_order_bird <-PA_summarized_bird %>% 
+  mutate(siteid =  factor(siteid, levels = site_order)) %>%
+  arrange(siteid)  %>% 
+  #order based on species count
+  filter(commonname %in% SpeciesList_bird) %>% 
+  mutate(commonname =  factor(commonname, levels = SpeciesList_bird)) %>%
+  arrange(commonname)  
+
+
+##GGPLOT
+
+n_species_bird <- length(unique(PA_filter_order_bird$commonname))
+
+
+heatmap_birds <- PA_filter_order_bird %>% 
+  ggplot(aes(commonname, siteid, fill = color_category))+
+  geom_tile(colour = "gray50") + # tile border
+  scale_fill_manual(values = colors, name = "Season") +
+  coord_equal(expand = 0) +
+  #scale_y_discrete(limits = rev(levels(fish_filtered_data$siteid_star)), drop = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(size = 10, angle = 45, hjust = 1, face = "bold"), # bold common names
+        axis.text.y = element_text(size = 12),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12) 
+        
+  )+
+  labs(x = "Bird Species", y = "SiteID", title = "2024 Bird Presence")+
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))+
+  #this adds make in the sites with missing data
+  geom_hline(yintercept = seq(0.5, length(unique(PA_filter_order_bird$siteid)) - 0.5, by = 1), #add normal grid lines
+             color = "black", linewidth = 0.5) +
+  geom_vline(xintercept = seq(0.5, n_species_bird - 0.5, by = 1),
+             color = "black", linewidth = 0.5)
+
+## print it
+heatmap_birds
+
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Bird_PA_heatmap.jpg", 
+           heatmap_birds,
+       width = 16,
+       height = 6,
+           dpi = 150)
+
+
+
+```
+#Vegetation Metrics
+
+```{r vegetation, echo = F}
+str(PA_veg)
+str(PA_filter_order_veg)
+
+##GGPLOT
+
+n_species_veg <- length(unique(PA_filter_order$scientificname))
+
+heatmap_veg <- PA_filter_order %>% 
+  ggplot(aes(scientificname, siteid_star, fill = color_category))+
+  geom_tile(colour = "gray50") + # tile border
+  scale_fill_manual(values = colors, name = "Season") +
+  coord_equal(expand = 0) +
+  #scale_y_discrete(limits = rev(levels(fish_filtered_data$siteid_star)), drop = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        axis.text.x = element_text(size = 10, angle = 45, hjust = 1, face = "bold"), # bold common names
+        axis.text.y = element_text(size = 12),
+        axis.title.y = element_text(size = 14),
+        axis.title.x = element_text(size = 14),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12) 
+        
+  )+
+  labs(x = "Plant Species", y = "SiteID", title = "2024 Plant Presence")+
+  guides(fill = guide_legend(override.aes = list(alpha = 1)))+
+  #this adds make in the sites with missing data
+  geom_hline(yintercept = seq(0.5, length(unique(PA_filter_order$siteid)) - 0.5, by = 1), #add normal grid lines
+             color = "black", linewidth = 0.5) +
+  geom_vline(xintercept = seq(0.5, n_species_veg - 0.5, by = 1),
+             color = "black", linewidth = 0.5)
+
+## print it
+heatmap_veg
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Veg_PA_heatmap.jpg", 
+           heatmap_veg,
+       width = 20,
+       height = 6,
+           dpi = 250)
+```
+
+# CRAM Metrics
+
+```{r CRAM, echo = F}
+
+#using only 2022 data for SOTB report  - downloaded 11/20/25
+
+str(CRAM_data_clean)
+
+CRAM_index <- CRAM_data_clean %>% 
+  group_by(siteid) %>% 
+  summarise(index_avg = mean(indexscore),
+            buffer_avg = mean(buffer_landscape_cont),
+            hydrology_avg = mean(hydrology),
+            physical_structure_avg = mean(physical_structure),
+            biotic_structure_avg = mean(biotic_structure)) %>% 
+  pivot_longer(cols = c(index_avg:biotic_structure_avg), names_to = "index")
+
+index_labels <- c(
+  buffer_avg = "Buffer",
+  hydrology_avg = "Hydrology",
+  physical_structure_avg = "Physcial Structure",
+  biotic_structure_avg = "Biotic Structure",
+  index_avg = "Index")
+
+
+CRAM_plot_subindex <- CRAM_index %>% 
+  filter(index != "index_avg") %>% 
+  ungroup() %>% 
+  #complete(siteid, year_label, index, fill = list(value = NA, vyear = NA)) %>% 
+  mutate(siteid = factor(siteid, levels = site_order)) %>% 
+ # mutate(year_label = factor(year_label, levels = c("year 1", "year 2"))) %>% 
+  ggplot(aes(x=siteid, y=value)) + 
+  geom_bar(stat = "identity", color = "black",
+           position = position_dodge()) +
+  ylab("Score") + 
+  xlab("Site") +
+  theme_bw() +
+  facet_wrap(~index,
+             labeller=labeller(index = index_labels)) +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    vjust = 1, hjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  scale_fill_manual(name = "Survey",
+                    values = c("#DDCC77", "#88CCEE"),
+                    labels = c("Prior", "Recent")) +
+  theme(legend.position = "bottom") +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text.x = element_text(size=14, face = "bold")) #+
+  # geom_text(aes(label = vyear),
+  #           position = position_dodge(width = 0.9),
+  #           vjust = -0.5, size = 3.5,
+  #           na.rm = TRUE)   # Show total replicates as label
+
+CRAM_plot_subindex
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/CRAM_subindices_2022.jpg", 
+           CRAM_plot_subindex,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+# overall index plot - 2022 data only, folks
+
+CRAM_plot <- CRAM_index %>% 
+  filter(index == "index_avg") %>% 
+  ungroup() %>% 
+  #complete(siteid, index, fill = list(value = NA, vyear = NA)) %>% 
+  mutate(siteid = factor(siteid, levels = site_order)) %>% 
+  #mutate(year_label = factor(year_label, levels = c("year 1", "year 2"))) %>% 
+  ggplot(aes(x=siteid, y=value)) + 
+  geom_bar(stat = "identity", color = "black",
+           position = position_dodge()) +
+  ylab("Score") + 
+  xlab("Site") +
+  theme_bw() +
+  facet_wrap(~index,
+             labeller=labeller(index = index_labels)) +
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    vjust = 1, hjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+ # scale_fill_manual(name = "Survey",
+      #              values = c("#DDCC77", "#88CCEE"),
+      #              labels = c("Prior", "Recent")) +
+  theme(legend.position = "bottom") +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text.x = element_text(size=14, face = "bold")) #+
+  # geom_text(aes(label = vyear),
+  #           position = position_dodge(width = 0.9),
+  #           vjust = -0.5, size = 3.5,
+  #           na.rm = TRUE)   # Show total replicates as label
+
+CRAM_plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/CRAM_index.jpg", 
+           CRAM_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+```
+
+# Macroalgae metrics
+```{r macroalgae, echo = F}
+
+Floating_plot <- Macro_Floating_df %>% 
+  filter(year == 2024) %>% 
+  group_by(siteid, estuaryname, estuarytype,
+           year, region, season) %>% 
+  summarise(Macro_avg = mean(estimatedcover, na.rm = TRUE),
+            Macro_SD = sd(estimatedcover, na.rm = TRUE)) %>% 
+  #flipped the order because we are going to have a coord flip later
+  mutate(siteid = factor(siteid, levels = rev(site_order))) %>% 
+  #mutate(year = factor(year, levels = c("2023", "2024"))) %>% 
+  ungroup() %>%  # Ungroup the data before completing
+  #added completet to fill in missing combinations to reserve bra position
+  complete(siteid, year, season, fill = list(Macro_avg = NA, Macro_SD = NA))  %>% 
+  mutate(season = factor(season, levels = c("Spring", "Fall"))) %>% 
+  ggplot(aes(x=siteid, y=Macro_avg, fill = season)) + 
+  geom_bar(stat = "identity", color = "black",
+           position = position_dodge(0.9)) +
+  #prevent the error bars from going below 0
+  geom_errorbar(aes(ymin= pmax(Macro_avg-Macro_SD, 0), ymax=Macro_avg+Macro_SD), 
+                width=0.2, position= position_dodge(0.9)) +
+  ylab("Avg. % Floating Macroalgae Cover") + 
+  xlab("Site") +
+  theme_bw() +
+  #facet_wrap(~year) %>% 
+  theme(axis.title.x = element_text(face="bold", size=16),
+        axis.text.x  = element_text(size=14, angle = 45,
+                                    vjust = 1, hjust = 1)) +
+  theme(axis.title.y = element_text(angle=90, face="bold", 
+                                    size=16, 
+                                    vjust=1.2),
+        axis.text.y  = element_text(size=14)) +
+  scale_fill_manual(name = "Season",
+                    values = c("#DDCC77", "#88CCEE")) +
+  theme(legend.position = "bottom") +
+  theme(legend.text = element_text(colour="black", size = 14)) +
+  theme(legend.title = element_text(colour="black", size = 16, face = "bold")) +
+  theme(strip.text.x = element_text(size=14, face = "bold")) +
+  coord_flip() 
+
+
+Floating_plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Macro_floating.jpg", 
+           Floating_plot,
+       width = 10,
+       height = 8,
+           dpi = 150)
+
+
+```
+
+
+# Step 4: Indicator Figures and Algorithms
+
+# Trophic Food Web Support (modified from ideal)
+
+trophic indicator = (fish abundance + invert abundance)/2
+
+```{r trophic food web support indicator, echo = F}
+str(sotb_invert_data_clean)
+
+# inverts
+invert_abun <- sotb_invert_data_clean %>%
+  filter(!is.na(scientificname), scientificname != "-88") %>%
+  group_by(siteid, year, season) %>%
+  summarize(invert_abundance = sum(abundance), .groups = "drop") 
+
+invert_richness <- sotb_invert_data_clean %>%
+  filter(!is.na(scientificname), scientificname != "-88") %>%
+  group_by(siteid, year, season) %>%
+  summarize(invert_richness = n_distinct(scientificname), .groups = "drop")
+
+# feesh
+str(Seine_df)
+
+fish_abun <- Seine_df %>%
+  filter(!is.na(abundance), abundance != "-88") %>%
+  group_by(siteid, year, season) %>%
+  summarize(fish_abundance = sum(abundance), .groups = "drop")
+
+fish_richness <- Seine_df %>%
+  filter(!is.na(scientificname), scientificname != "-88") %>%
+  group_by(siteid, year, season) %>%
+  summarize(fish_rich = n_distinct(scientificname), .groups = "drop")
+
+#Trophic Support Metric
+
+trophic_combined <- invert_abun %>%
+  left_join(fish_abun, by = c("siteid", "year", "season")) %>%
+  mutate(trophic_support_indicator = (fish_abundance + invert_abundance)/2) %>%
+  mutate(trophic_support_indicator = as.integer(trophic_support_indicator))
+  
+
+Trophic_Support_metric <- trophic_combined %>%
+  pivot_longer(cols = c(invert_abundance, fish_abundance, trophic_support_indicator), 
+               names_to = "metric", values_to = "value") 
+  
+# tile plot with all components + algorithm
+Trophic_Support_metric$metric <- factor(recode(Trophic_Support_metric$metric, 
+                             fish_abundance = "Fish Abundance",
+                             invert_abundance = "Invert Abundance",
+                             trophic_support_indicator = "Trophic Support Indicator"), 
+                             levels = c("Fish Abundance", "Invert Abundance", "Trophic Support Indicator"))
+
+trophic_colors <- c(`Fish Abundance` = "lightblue", `Invert Abundance` = "lightblue", `Trophic Support Indicator` = "cornflowerblue")
+
+Trophic_Support_Indicator_Plot <- Trophic_Support_metric %>%
+  filter(year %in% 2024) %>%
+  ggplot( aes(metric, siteid, fill = metric)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = value), size = 8) +
+  facet_wrap(~season) +
+  scale_fill_manual(values = trophic_colors) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  ) + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        strip.text = element_text(size = 18)) +
+  theme(legend.position = "none")
+
+Trophic_Support_Indicator_Plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Trophic_Support_indicator.jpg", 
+           Trophic_Support_Indicator_Plot,
+       width = 12,
+       height = 12,
+           dpi = 200)
+
+# Tile Plot for Trophic Food Web Support
+
+```
+
+# Nursery Habitat Provisioning for Fish
+
+
+# Bird Habitat Support (modified from ideal)
+bird indicator = bird abundance + bird richness
+
+```{r bird indicator, include = F}
+str(bird_count_df)
+str(PA_birds)
+#Metrics included in this indicator are abundance and richness
+
+#create df of site, year, season, metric  and value 
+bird_abun <- bird_count_df %>%
+  group_by(siteid, year, season) %>%
+  summarize(bird_abundance = sum(abundance), .groups = "drop")
+
+bird_richness <- PA_birds %>%
+  group_by(siteid, year, season) %>%
+  summarize(bird_richness = sum(presence_absence), .groups = "drop") 
+
+# combined bird dataframe + algorithm for bird indicator
+bird_combined <- bird_abun %>%
+  left_join(., bird_richness, by = c("siteid", "year", "season")) %>%
+  group_by(siteid, year, season) %>%
+  mutate(bird_indicator = bird_abundance + bird_richness)
+
+Bird_metric <- bird_combined %>%
+  pivot_longer(cols = c(bird_abundance, bird_richness, bird_indicator), 
+               names_to = "metric", values_to = "value")
+
+  
+# tile plot with all components + algorithm
+Bird_metric$metric <- factor(recode(Bird_metric$metric, 
+                             bird_abundance = "Bird Abundance",
+                             bird_richness = "Bird Richness",
+                             bird_indicator = "Bird Indicator"), 
+                             levels = c("Bird Abundance", "Bird Richness", "Bird Indicator"))
+
+bird_colors <- c(`Bird Abundance` = "lightblue", `Bird Richness` = "lightblue", `Bird Indicator` = "cornflowerblue")
+
+Bird_Indicator_Plot <- ggplot(Bird_metric, aes(metric, siteid, fill = metric)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = value), size = 8) +
+  facet_wrap(~season) +
+  scale_fill_manual(values = bird_colors) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid = element_blank()
+  ) + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16),
+        strip.text = element_text(size = 18)) +
+  theme(legend.position = "none")
+
+Bird_Indicator_Plot
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/figures_share/Bird_indicator.jpg", 
+           Bird_Indicator_Plot,
+       width = 12,
+       height = 12,
+           dpi = 200)
+
+```
+
+# Habitat Structure and Complexity
+# Vegetation Community
+# Eutrophication
+# Anthropogenc Disturbance and Land Use
+# Altered Hydrology
+# Non-native Species
+
+# BPJ scores
+
+Figures summarizing Best Professional Judgment exercise by Expert Panel members
+
+```{r BPJ score summary}
+
+
+bpj.scores <- here(read.csv("data-inventory", "BPJ_scores.csv"))
+head(bpj.scores)
+
+# Pivot data
+bpj.scores.long <- bpj.scores %>%
+  pivot_longer(cols = c(Avg.Rnd.1, Avg.Rnd.2),
+               names_to = "Round",
+               values_to = "Average") %>%
+  mutate(stdev = ifelse(Round == "Avg.Rnd.1", stdev_R1, stdev.2_R2))
+
+round.colors = c("Avg.Rnd.1" = "darkblue", "Avg.Rnd.2" = "#00cCCC")
+class.colors = c("seasonally dry, small lagoons" = "#330000", "sandy beach, usually wet lagoons" = "#FFCCCC" , "larger lagoons, usually wet" = "#990000")
+
+# Plot 1: plot just stdev in both rounds
+
+scoring_summary1 <- ggplot(bpj.scores.long, aes(x = Estuary, y = Average, color = Round))  + 
+  geom_tile(aes(y = 0.5, fill = Class),
+            height = 0.3, color = NA) +
+  geom_point(size =  3, position = position_dodge(width = 0.4)) +
+  geom_errorbar(aes(ymin = Average - stdev,
+                    ymax = Average + stdev),
+                width = 0.1, position = position_dodge(width = 0.4))  +
+  scale_y_continuous(expand = expansion(mult = c(0.2, 0.05)), breaks = 1:5) +
+  scale_color_manual(values = round.colors, labels = c("Avg.Rnd.1" = "Round 1", "Avg.Rnd.2" = "Round 2"), name = "Panel Review") +
+  scale_fill_manual(values = class.colors, name = "Estuary class") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 14),
+        legend.position = "right") + 
+  labs(y = "Score 1 -5", x = "Estuary") 
+  
+scoring_summary1
+
+ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/SOTB_ppt/scoring_summary1.jpg", 
+           scoring_summary1,
+       width = 8,
+       height = 8,
+           dpi = 300)
+
+
+# Plot 2: Plot side-by side barplot with consensus 
+#repivot data to include consensus
+bpj.scores.consensus <- bpj.scores %>%
+  pivot_longer(cols = c(Avg.Rnd.1, Avg.Rnd.2, Consensus),
+               names_to = "Round",
+               values_to = "Average") %>%
+  mutate(stdev = case_when(
+    Round == "Avg.Rnd.1" ~ stdev_R1,
+    Round == "Avg.Rnd.2" ~ stdev.2_R2,
+    Round == "Consensus" ~ NA_real_
+  ))
+
+round.colors = c("Avg.Rnd.1" = "darkblue", "Avg.Rnd.2" = "#00cCCC", "Consensus" = "#339933")
+class.colors = c("seasonally dry, small lagoons" = "black", "sandy beach, usually wet lagoons" = "grey90" , "larger lagoons, usually wet" = "grey50")
+
+
+consensus_summary1 <-  ggplot(bpj.scores.consensus, aes(x = Estuary, y = Average, color = Round))  + 
+  geom_tile(aes(y = 0.5, fill = Class),
+            height = 0.3, color = NA) +
+  geom_point(size =  3, position = position_dodge(width = 0.4)) +
+  geom_errorbar(aes(ymin = Average - stdev,
+                    ymax = Average + stdev),
+                width = 0.1, position = position_dodge(width = 0.4))  +
+  scale_y_continuous(expand = expansion(mult = c(0.2, 0.05)), breaks = 1:5) +
+  scale_color_manual(values = round.colors, labels = c("Avg.Rnd.1" = "Round 1", "Avg.Rnd.2" = "Round 2", "Consensus" = "Consensus"), name = "Panel Review") +
+  scale_fill_manual(values = class.colors, name = "Estuary class") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        axis.text.y = element_text(size = 14),
+        axis.title.x = element_text(size = 18),
+        axis.title.y = element_text(size = 18),
+        legend.text = element_text(size = 10),
+        legend.title = element_text(size = 14),
+        legend.position = "right") + 
+  labs(y = "Score 1 -5", x = "Estuary") 
+
+  
+  consensus_summary1
+  
+  ggsave("/Users/jilltupitza/Library/CloudStorage/OneDrive-SCCWRP/SM-Bay/SOTB_ppt/scoring_summary2.jpg", 
+           consensus_summary1,
+       width = 8,
+       height = 8,
+           dpi = 300)
+
+# Slide 23 replacement
+
+```

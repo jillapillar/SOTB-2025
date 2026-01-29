@@ -1,0 +1,11 @@
+siteid,year,season,num_events_DO,perc_do_below_3mgl,perc_temp_abv_25
+SC-BSC,2024,Fall,23,45,0
+SC-BSC,2024,Spring,11,78,0
+SC-MAL,2024,Fall,NA,NA,NA
+SC-MAL,2024,Spring,NA,NA,NA
+SC-ZUM,2024,Fall,12,35,5
+SC-ZUM,2024,Spring,5,6,0
+SC-TOP,2024,Fall,NA,NA,NA
+SC-TOP,2024,Spring,NA,NA,NA
+SC-ASE,2024,Fall,NA,NA,NA
+SC-ASE,2024,Spring,NA,NA,NA

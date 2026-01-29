@@ -1,0 +1,53 @@
+﻿projectid,siteid,estuaryname,stationno,samplecollectiondate,samplelocation,samplereplicate,collectionmethod,scientificname,qualifier,abundance,excludefromanalysis,sievelocation,sievesize,sievesizeunits,voucher,personalvoucher,initial,taxonomist,lab,abundancenotes
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,1,11/1/24,intertidal,1,sediment core,Tubificidae,,2,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,1,11/1/24,intertidal,1,sediment core,Chironomid,,1,,lab,,um,,,,,CSULB,not in lu
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,1,11/1/24,intertidal,2,sediment core,Tubificidae,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,1,11/1/24,intertidal,3,sediment core,Chironomid,,2,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,1,sediment core,-88,,0,,lab,,um,,,,,CSULB,nothing found
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,2,sediment core,Tubificidae,,47,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,2,sediment core,Capitellidae ,,60,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,3,sediment core,Polydora nuchalis,,2,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,3,sediment core,Capitellidae ,,19,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,2,11/1/24,intertidal,3,sediment core,Tubificidae,,6,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,1,sediment core,Polydora nuchalis,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,1,sediment core,Ceratopogonidae ,,1,,lab,,um,,,,,CSULB,pupa
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,2,sediment core,Tubificidae,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,2,sediment core,Chironomid,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,2,sediment core,unknown clam,,1,,lab,,um,,,,,CSULB,how to note?
+SMBRC-Prop50,SC-MAL,Malibu Lagoon ,3,11/1/24,intertidal,3,sediment core,Collembola,,1,,lab,,um,,,,,CSULB,aka Poduridae
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Tubificidae,,47,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Mediomastus,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Chironomid,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Stratiomyidae,,1,,lab,,um,,,,,CSULB,not in lu
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Ephemeroptera,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,1,sediment core,Caenidae,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,2,sediment core,Tubificidae,,2,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,2,sediment core,Melampus olivaceus,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,2,sediment core,Ceratopogonidae ,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,3,sediment core,Tubificidae,,4,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,3,sediment core,Chironomid,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,3,sediment core,Stratiomyidae,,2,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,10/11/24,intertidal,3,sediment core,Ephemeroptera,,5,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,11/3/23,intertidal,4*,sediment core,Ceratopogonidae ,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,11/3/23,intertidal,4*,sediment core,Dolichopodidae,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,11/3/23,intertidal,4*,sediment core,Ceratopogonidae ,,1,,lab,,um,,,,,CSULB,pupa
+SMBRC-Prop50,SC-BSC,Big Sycamore Canyon ,1,11/3/23,intertidal,4*,sediment core,Tubificidae,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-TOP,Topanga Lagoon ,1,10/11/24,intertidal,1,sediment core,Tubificidae,,9,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-TOP,Topanga Lagoon ,1,10/11/24,intertidal,2,sediment core,Tubificidae,,9,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-TOP,Topanga Lagoon ,1,10/11/24,intertidal,3,sediment core,Tubificidae,,24,,lab,,um,,,,,CSULB,
+SMBRC-Prop51,SC-TOP,Topanga Lagoon ,1,11/3/23,intertidal,4*,sediment core,Ceratopogonidae ,,1,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-TOP,Topanga Lagoon ,1,11/3/23,intertidal,4*,sediment core,Tubificidae,,33,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,1,sediment core,Tubificidae,,158,,lab,,um,,,,,CSULB,A
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,1,sediment core,Dolichopodidae,,1,,lab,,um,,,,,CSULB,A
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,2,sediment core,Tubificidae,,27,,lab,,um,,,,,CSULB,B
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,2,sediment core,Dolichopodidae,,1,,lab,,um,,,,,CSULB,B
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,2,sediment core,Chironomid,,1,,lab,,um,,,,,CSULB,B
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,1,10/11/24,intertidal,3,sediment core,Tubificidae,,30,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,2,10/11/24,intertidal,1,sediment core,Tubificidae,,28,,lab,,um,,,,,CSULB,C
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,2,10/11/24,intertidal,2,sediment core,Tubificidae,,75,,lab,,um,,,,,CSULB,D
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,2,10/11/24,intertidal,2,sediment core,Hydrophilidae,,1,,lab,,um,,,,,CSULB,D
+SMBRC-Prop50,SC-ZUM,Zuma Lagoon,2,10/11/24,intertidal,3,sediment core,Tubificidae,,68,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-ASE,Arroyo Sequit,1,11/3/23,intertidal,1,sediment core,Tubificidae,,11,,lab,,um,,,,,CSULB,
+SMBRC-Prop50,SC-ASE,Arroyo Sequit,1,11/3/23,intertidal,1,sediment core,Staphylinidae,,4,,lab,,um,,,,,CSULB,
+,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,
